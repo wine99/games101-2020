@@ -70,6 +70,11 @@ Eigen::Matrix4f get_projection_matrix(float eye_fov, float aspect_ratio,
     // Create the projection matrix for the given parameters.
     // Then return it.
 
+    //! The given zNear and zFar are positive.
+    //! In such case, after apllying perspToOrtho,
+    //! the space of negative z quadrant is inverted,
+    //! hence it's -2/width and -2/height in orthoScale.
+
     Eigen::Matrix4f perspToOrtho = Eigen::Matrix4f::Identity();
     perspToOrtho << zNear, 0, 0, 0,
                     0, zNear, 0, 0,
@@ -86,8 +91,8 @@ Eigen::Matrix4f get_projection_matrix(float eye_fov, float aspect_ratio,
                       0, 1, 0, 0,
                       0, 0, 1, -((zNear + zFar) / 2),
                       0, 0, 0, 1;
-    orthoScale << 2 / width, 0, 0, 0,
-                  0, 2 / height, 0, 0,
+    orthoScale << -2 / width, 0, 0, 0,
+                  0, -2 / height, 0, 0,
                   0, 0, 2 / (zNear - zFar), 0,
                   0, 0, 0, 1;
     ortho = orthoScale * orthoTranslate;
