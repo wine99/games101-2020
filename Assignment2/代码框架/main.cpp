@@ -30,8 +30,39 @@ Eigen::Matrix4f get_model_matrix(float rotation_angle)
 
 Eigen::Matrix4f get_projection_matrix(float eye_fov, float aspect_ratio, float zNear, float zFar)
 {
-    // TODO: Copy-paste your implementation from the previous assignment.
-    Eigen::Matrix4f projection;
+    Eigen::Matrix4f projection = Eigen::Matrix4f::Identity();
+
+    // Create the projection matrix for the given parameters.
+    // Then return it.
+
+    //! The given zNear and zFar are positive.
+    //! In such case, after apllying perspToOrtho,
+    //! the space of negative z quadrant is inverted,
+    //! hence it's -2/width and -2/height in orthoScale.
+
+    Eigen::Matrix4f perspToOrtho = Eigen::Matrix4f::Identity();
+    perspToOrtho << zNear, 0, 0, 0,
+                    0, zNear, 0, 0,
+                    0, 0, zNear + zFar, -(zNear * zFar),
+                    0, 0, 1, 0;
+
+    float height = std::tan(eye_fov / 180 * MY_PI / 2) * std::abs(zNear) * 2;
+    float width = aspect_ratio * height;
+
+    Eigen::Matrix4f ortho = Eigen::Matrix4f::Identity();
+    Eigen::Matrix4f orthoTranslate = Eigen::Matrix4f::Identity();
+    Eigen::Matrix4f orthoScale = Eigen::Matrix4f::Identity();
+    orthoTranslate << 1, 0, 0, 0,
+                      0, 1, 0, 0,
+                      0, 0, 1, -((zNear + zFar) / 2),
+                      0, 0, 0, 1;
+    orthoScale << -2 / width, 0, 0, 0,
+                  0, -2 / height, 0, 0,
+                  0, 0, 2 / (zNear - zFar), 0,
+                  0, 0, 0, 1;
+    ortho = orthoScale * orthoTranslate;
+
+    projection = ortho * perspToOrtho;
 
     return projection;
 }
