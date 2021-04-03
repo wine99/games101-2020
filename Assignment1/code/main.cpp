@@ -35,7 +35,7 @@ Eigen::Matrix4f get_rotation(Vector3f axis, float angle)
     rotation2 = std::cos(angleRadian) * identity
                + (1 - std::cos(angleRadian)) * axis * axis.transpose()
                + std::sin(angleRadian) * dual;
-    
+
     for (int i = 0; i < 3; ++i)
         for (int j = 0; j < 3; ++j)
             rotation(i, j) = rotation2(i, j);
