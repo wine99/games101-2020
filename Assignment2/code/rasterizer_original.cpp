@@ -43,14 +43,16 @@ inline float get_z_from_cross_p(float xa, float ya, float xb, float yb) {
     return xa * yb - ya * xb;
 }
 
-static bool insideTriangle(float x, float y, const Vector3f* _v)
+static bool insideTriangle(int x, int y, const Vector3f* _v)
 {
+    float _x = x + 0.5;
+    float _y = y + 0.5;
     float z1 = get_z_from_cross_p(
-        x-_v[0].x(), y-_v[0].y(), _v[1].x()-_v[0].x(), _v[1].y()-_v[0].y());
+        _x-_v[0].x(), _y-_v[0].y(), _v[1].x()-_v[0].x(), _v[1].y()-_v[0].y());
     float z2 = get_z_from_cross_p(
-        x-_v[1].x(), y-_v[1].y(), _v[2].x()-_v[1].x(), _v[2].y()-_v[1].y());
+        _x-_v[1].x(), _y-_v[1].y(), _v[2].x()-_v[1].x(), _v[2].y()-_v[1].y());
     float z3 = get_z_from_cross_p(
-        x-_v[2].x(), y-_v[2].y(), _v[0].x()-_v[2].x(), _v[0].y()-_v[2].y());
+        _x-_v[2].x(), _y-_v[2].y(), _v[0].x()-_v[2].x(), _v[0].y()-_v[2].y());
     return (z1*z2 > 0 && z2*z3 > 0 && z3*z1 > 0);
 }
 
@@ -111,7 +113,7 @@ void rst::rasterizer::draw(pos_buf_id pos_buffer, ind_buf_id ind_buffer, col_buf
     }
 }
 
-//Screen space rasterization, MSAA(multi-sampling anti-aliasing) version
+//Screen space rasterization
 void rst::rasterizer::rasterize_triangle(const Triangle& t) {
     // Find out the bounding box of current triangle.
     // iterate through the pixel and find if the current pixel is inside the triangle
@@ -131,27 +133,15 @@ void rst::rasterizer::rasterize_triangle(const Triangle& t) {
     int y_lower = std::floor(std::min({v[0].y(), v[1].y(), v[2].y()}));
     int y_upper = std::floor(std::max({v[0].y(), v[1].y(), v[2].y()}));
 
-    for (float x = x_lower; x <= x_upper; x += 1.0) {
-        for (float y = y_lower; y <= y_upper; y += 1.0) {
-            int sample_count = 0;
-            float z_interpolated = 0;
-
-            for (float sample_x : { 0.25, 0.75} ) {
-                for (float sample_y : { 0.25, 0.75 }) {
-                    if (insideTriangle(x + sample_x, y + sample_y, t.v)) {
-                        auto [alpha, beta, gamma] = computeBarycentric2D(x+sample_x, y+sample_y, t.v);
-                        float sample_w_reciprocal = 1.0/(alpha / v[0].w() + beta / v[1].w() + gamma / v[2].w());
-                        float sample_z_interpolated = alpha * v[0].z() / v[0].w() + beta * v[1].z() / v[1].w() + gamma * v[2].z() / v[2].w();
-                        z_interpolated += sample_z_interpolated * sample_w_reciprocal;
-                        ++sample_count;
-                    }
-                }
-            }
-
-            if (sample_count) {
-                z_interpolated /= sample_count;
+    for (int x = x_lower; x <= x_upper; x += 1) {
+        for (int y = y_lower; y <= y_upper; y += 1) {
+            if (insideTriangle(x, y, t.v)) {
+                auto [alpha, beta, gamma] = computeBarycentric2D(x+0.5, y+0.5, t.v);
+                float w_reciprocal = 1.0/(alpha / v[0].w() + beta / v[1].w() + gamma / v[2].w());
+                float z_interpolated = alpha * v[0].z() / v[0].w() + beta * v[1].z() / v[1].w() + gamma * v[2].z() / v[2].w();
+                z_interpolated *= w_reciprocal;
                 if (z_interpolated < depth_buf[get_index(x, y)]) {
-                    set_pixel(Eigen::Vector3f(x, y, 1), t.getColor() * sample_count / 4);
+                    set_pixel(Eigen::Vector3f(x, y, 1), t.getColor());
                     depth_buf[get_index(x, y)] = z_interpolated;
                 }
             }
